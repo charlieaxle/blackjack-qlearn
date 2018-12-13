@@ -1,34 +1,68 @@
 CARD_VALUES = {'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':10,'Q':10,'K':10,'A':11}
 import random
 
-class RandomCard(object):
+class RandomCard(object):    
     def __init__(self):
+        '''
+        Initializes a new RandomCard object
+    
+        Object Attributes:
+            type (string): The type of card, i.e. "7" or "A"
+            value (string): The value of the card
+        '''
         self.type = list(CARD_VALUES.keys())[random.randint(0,len(CARD_VALUES)-1)]
         self.value = CARD_VALUES[self.type]
+        self.busted = False
         
     def __str__(self):
         return self.type+':'+str(self.value)
 
-class Hand(object):
+class Hand(object):    
     def __init__(self, initial_cards=0):
+        '''
+        Initializes a new Hand object
+        
+        Attributes:
+            cards (list): A list that may contain multiple Card objects
+            score (int): The current value of the cards in the hand
+            busted (boolean): True if hand is bust, otherwise False
+        '''
         self.cards = []
         self.score = 0
         
         self.deal_card(initial_cards)      
     
     def get_score(self):
+        '''
+        Used to access the current score of a Hand object
+        Params: None
+        Returns: self.score
+        '''
         return sum([card.value for card in self.cards])
     
     def deal_card(self, num_cards=1):
+        '''
+        Used to add card(s) to Hand object
         
+        Params:
+            num_cards(int, default=1): Number of cards to add
+        Returns:
+            None
+        '''        
         for i in range(num_cards):
             self.cards.append(RandomCard())
             self.score = self.get_score()
-
-    def is_bust(self):
-        return self.score > 21
+            self.is_bust = (self.score > 21)
     
     def possible_moves(self):
+        '''
+        Used to get possible moves available to a hand'
+        
+        Params:
+            None
+        Returns:
+            List of possible moves. Currently always returns ["hit","stand"]
+        '''
         #if self.score < 21:
         #    return ['hit','stand']
         #else:
@@ -46,6 +80,18 @@ class Hand(object):
     
 class BlackjackGame(object):
     def __init__(self):
+        '''
+        Initializes a new BlackjackGame object
+        
+                
+        Attributes:
+            turn (string): "player" or "dealer" depending on current turn
+            winner (string): Winner of hand
+            over (boolean): True if hand is over, otherwise False
+            player_hand (Hand): Player's current hand
+            dealer_hand (Hand): Dealer's current hand
+            
+        '''
         self.turn='player'
         self.winner = None
         self.over = False
@@ -106,7 +152,7 @@ class DumbAgent(object):
                 winner = None
         
         return (game.player_hand.get_score(), game.dealer_hand.get_score(),'Winner='+str(winner), self.money)
-	
+
 class SmartAgent(object):
     def __init__(self, money=0, epsilon = .1, learning_rate = .5, discount=.2):
         self.money = money
@@ -203,15 +249,3 @@ class SmartAgent(object):
                 winner = None
         
         return (game.player_hand.get_score(), game.dealer_hand.get_score(),'Winner='+str(winner), self.money)
-	
-	
-agent = SmartAgent(money=10000, epsilon=.1, learning_rate=.2, discount=.75)
-results = []
-for i in [0,100,1000,5000,10000]:
-    agent = SmartAgent(money=10000)
-    agent.learn(i)
-    
-    for j in range(10000):
-        agent.play_optimal()
-    
-    results.append((i, agent.money))
