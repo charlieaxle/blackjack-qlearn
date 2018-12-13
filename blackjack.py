@@ -29,7 +29,7 @@ class Hand(object):
         '''
         self.cards = []
         self.score = 0
-        
+        self.busted = False
         self.deal_card(initial_cards)      
     
     def get_score(self):
@@ -52,7 +52,7 @@ class Hand(object):
         for i in range(num_cards):
             self.cards.append(RandomCard())
             self.score = self.get_score()
-            self.is_bust = (self.score > 21)
+            self.busted = (self.score > 21)
     
     def possible_moves(self):
         '''
@@ -129,18 +129,18 @@ class DumbAgent(object):
     def play_hand(self):
         game = BlackjackGame()
         winner = ''
-        while game.turn == 'player' and not game.player_hand.is_bust():
+        while game.turn == 'player' and not game.player_hand.busted:
             move = game.player_allowed_moves()[random.randint(0,1)]
             game.player_move(move)
         
-        if game.player_hand.is_bust():
+        if game.player_hand.busted:
             winner = 'dealer'
             self.money -= 1
         else:
             while not game.over:
                 game.dealer_move()
 
-            if game.dealer_hand.is_bust() or game.player_hand.get_score() > game.dealer_hand.get_score():
+            if game.dealer_hand.busted or game.player_hand.get_score() > game.dealer_hand.get_score():
                 winner = 'player'
                 self.money += 1
 
@@ -173,28 +173,28 @@ class SmartAgent(object):
         last_move = ''
         cur_state = ()
         next_state = ()
-        while game.turn == 'player' and not game.player_hand.is_bust():
+        while game.turn == 'player' and not game.player_hand.busted:
             cur_state = game.game_state
             move = self.get_move(game)
             last_move = move
             game.player_move(move)
             next_state = game.game_state
 
-            if game.player_hand.is_bust():
+            if game.player_hand.busted:
                 self.Q[cur_state][move] += self.learning_rate * (-1 )
             
             else:
                 self.Q[cur_state][move] += self.learning_rate * (0 + self.discount*self.Q[next_state][self.get_best_move(game)]-self.Q[cur_state][move] )
             
             
-        if game.player_hand.is_bust():
+        if game.player_hand.busted:
             winner = 'dealer'
  
         else:
             while not game.over:
                 game.dealer_move()
 
-            if game.dealer_hand.is_bust() or game.player_hand.get_score() > game.dealer_hand.get_score():
+            if game.dealer_hand.busted or game.player_hand.get_score() > game.dealer_hand.get_score():
                 winner = 'player'
                 self.Q[cur_state][move] += self.learning_rate * (1 - self.Q[cur_state][move] )
 
@@ -223,21 +223,25 @@ class SmartAgent(object):
         best_move = random.choice(best_moves)
         return best_move
     
+    def play(self, num_hands):
+        for i in range(num_hands):
+            self.play_optimal()
+    
     def play_optimal(self):
         game = BlackjackGame()
         winner = ''
-        while game.turn == 'player' and not game.player_hand.is_bust():
+        while game.turn == 'player' and not game.player_hand.busted:
             move = self.get_best_move(game)
             game.player_move(move)
         
-        if game.player_hand.is_bust():
+        if game.player_hand.busted:
             winner = 'dealer'
             self.money -= 1
         else:
             while not game.over:
                 game.dealer_move()
 
-            if game.dealer_hand.is_bust() or game.player_hand.get_score() > game.dealer_hand.get_score():
+            if game.dealer_hand.busted or game.player_hand.get_score() > game.dealer_hand.get_score():
                 winner = 'player'
                 self.money += 1
 
