@@ -36,6 +36,7 @@ class Hand(object):
         self.cards = []
         self.score = 0
         self.busted = False
+        self.has_ace = False
         self.deal_card(initial_cards)      
     
     def get_score(self):
@@ -44,7 +45,10 @@ class Hand(object):
         Params: None
         Returns: self.score
         '''
-        return sum([card.value for card in self.cards])
+        score = sum([card.value for card in self.cards])
+        if score > 21 and self.has_ace:
+            score -= 10
+        return score
     
     def deal_card(self, num_cards=1):
         '''
@@ -59,6 +63,7 @@ class Hand(object):
             self.cards.append(Card())
             self.score = self.get_score()
             self.busted = (self.score > 21)
+        self.has_ace = 'A' in [card.type for card in self.cards]
     
     def possible_moves(self):
         '''
@@ -104,7 +109,7 @@ class BlackjackGame(object):
         self.over = False
         self.player_hand = Hand(2)        
         self.dealer_hand = Hand(2)
-        self.game_state = (self.player_hand.get_score(),self.dealer_hand.cards[0].value)
+        self.game_state = (self.player_hand.get_score(),self.dealer_hand.cards[0].value, self.player_hand.has_ace)
         
     def update_game_state(self):
         '''
@@ -113,7 +118,7 @@ class BlackjackGame(object):
         Params:None
         Returns:None
         '''
-        self.game_state = (self.player_hand.get_score(),self.dealer_hand.cards[0].value)
+        self.game_state = (self.player_hand.get_score(),self.dealer_hand.cards[0].value, self.player_hand.has_ace)
         
         
     def player_allowed_moves(self):
@@ -176,9 +181,16 @@ class Agent(object):
         self.epsilon = epsilon
         self.learning_rate = learning_rate
         self.discount = discount
+        self.wins = 0
+        self.losses = 0
+        self.draws = 0
+        self.games = 0
         self.Q = {}
-        for state in [(i,j) for i in range(4,22) for j in range(2,12)]:
+        for state in [(i,j,False) for i in range(4,22) for j in range(2,12)]:
             self.Q[state] = {'hit':0, 'stand':0}
+        for state in [(i,j,True) for i in range(12,22) for j in range(2,12)]:
+            self.Q[state] = {'hit':0, 'stand':0}
+      
     
     def learn(self, num_hands):
         '''
@@ -212,12 +224,11 @@ class Agent(object):
             next_state = game.game_state
 
             if game.player_hand.busted:
-                self.Q[cur_state][move] += self.learning_rate * (-1 )
-            
-            else:
+                self.Q[cur_state][move] += self.learning_rate * (-1 - self.Q[cur_state][move])        
+         
+            elif move == 'hit':
                 self.Q[cur_state][move] += self.learning_rate * (0 + self.discount*self.Q[next_state][self.get_best_move(game)]-self.Q[cur_state][move] )
-            
-            
+                  
         if game.player_hand.busted:
             winner = 'dealer'
  
@@ -227,11 +238,12 @@ class Agent(object):
 
             if game.dealer_hand.busted or game.player_hand.get_score() > game.dealer_hand.get_score():
                 winner = 'player'
-                self.Q[cur_state][move] += self.learning_rate * (1 - self.Q[cur_state][move] )
+                self.Q[cur_state][move] += self.learning_rate * (1 - self.Q[cur_state][move])
 
             elif game.player_hand.get_score() < game.dealer_hand.get_score():
                 winner = 'dealer'
-                self.Q[cur_state][move] += self.learning_rate * (-1 -self.Q[cur_state][move] )
+  
+                self.Q[cur_state][move] += self.learning_rate * (-1 - self.Q[cur_state][move] )
 
             else:
                 winner = None
@@ -292,6 +304,7 @@ class Agent(object):
             num_hands (int): Number of hands to play
         Returns: tuple containing (player score, dealer score, winner, and self.money)
         '''
+        self.games += 1
         game = BlackjackGame()
         winner = ''
         while game.turn == 'player' and not game.player_hand.busted:
@@ -301,6 +314,7 @@ class Agent(object):
         if game.player_hand.busted:
             winner = 'dealer'
             self.money -= 1
+            self.losses += 1
 
         else:
             while not game.over:
@@ -309,12 +323,15 @@ class Agent(object):
             if game.dealer_hand.busted or game.player_hand.get_score() > game.dealer_hand.get_score():
                 winner = 'player'
                 self.money += 1
+                self.wins += 1
 
             elif game.player_hand.get_score() < game.dealer_hand.get_score():
                 winner = 'dealer'
                 self.money -= 1
+                self.losses += 1
 
             else:
                 winner = None
+                self.draws += 1
         
         return (game.player_hand.get_score(), game.dealer_hand.get_score(),'Winner='+str(winner), self.money)
